@@ -1,67 +1,67 @@
-# lisa — Spec do Projeto
+# lisa — Project Spec
 
-> Piloto de testes: fale no smartphone/tablet (web/PWA) → texto aparece (ou é salvo) no computador, em qualquer campo, estilo Whispering/WhisperFlow.
+> Test pilot: speak on the smartphone/tablet (web/PWA) → text appears (or is saved) on the computer, in any focused field, in the style of Whispering/WhisperFlow.
 
-## 1. Visão
+## 1. Vision
 
-Piloto de testes do **pepper.ai**: app web/PWA que captura a voz do usuário e um serviço no computador que transcreve e **injeta o texto no campo em foco** (ou salva como registro), tudo na rede local. Monorepo p/ compartilhar tipos, protocolo e módulos entre app e servidor.
+Test pilot for **pepper.ai**: a web/PWA app that captures the user's voice plus a service on the computer that transcribes and **injects the text into the focused field** (or saves it as a record), all on the local network. Monorepo to share types, protocol and modules between app and server.
 
-**Fases do piloto:**
+**Pilot phases:**
 
-- **v0.1:** PWA grava → serviço transcreve → transcript exibido no app.
-- **v0.2:** texto injetado no campo em foco do Mac (clipboard + `Cmd+V`).
-- **v0.3:** modo "salvar como registro" (espelha o modelo de dados do pepper v1).
+- **v0.1:** PWA records → service transcribes → transcript displayed in the app.
+- **v0.2:** text injected into the focused field of the Mac (clipboard + `Cmd+V`).
+- **v0.3:** "save as record" mode (mirrors pepper v1's data model).
 
-**O que o piloto NÃO é:** sem login, sem CRUD completo, sem interpretação de comandos (v2 do pepper). Código que se provar bom migra para o pepper.
+**What the pilot is NOT:** no login, no full CRUD, no command interpretation (pepper v2). Code that proves itself good migrates to pepper.
 
-## 2. Relação com o pepper.ai
+## 2. Relationship with pepper.ai
 
-| Tema | pepper.ai | lisa |
+| Topic | pepper.ai | lisa |
 |---|---|---|
-| Papel | Produto completo (assistente) | Piloto de interface/teste |
-| Codebase | Separada | Separada — **monorepo interno** (§5) |
-| Cadastro/JWT | Sim (v1) | Não — rede local de confiança |
-| Registros salvos | Sim (core da v1) | Só em v0.3, espelhando o schema |
-| Inject de texto no desktop | Não (foco: app + API) | **Sim — o desafio central** |
-| ASR | whisper.cpp `large-v3-turbo` | Mesmo modelo |
-| Cliente | React Native | Web/PWA (por enquanto; RN pode voltar no pepper) |
+| Role | Full product (assistant) | Interface/test pilot |
+| Codebase | Separate | Separate — **internal monorepo** (§5) |
+| Sign-up/JWT | Yes (v1) | No — trusted local network |
+| Saved records | Yes (core of v1) | Only in v0.3, mirroring the schema |
+| Text inject on desktop | No (focus: app + API) | **Yes — the central challenge** |
+| ASR | whisper.cpp `large-v3-turbo` | Same model |
+| Client | React Native | Web/PWA (for now; RN may come back in pepper) |
 
-Se o lisa virar módulo do pepper: o que migra é o server-side (listener + inject), extraído como pacote — a estrutura de monorepo (`packages/*`) já é preparada para isso.
+If lisa becomes a pepper module: what migrates is the server-side (listener + inject), extracted as a package — the monorepo structure (`packages/*`) is already prepared for it.
 
-## 3. Decisões técnicas
+## 3. Technical decisions
 
-| Decisão | Escolha | Motivo |
+| Decision | Choice | Reason |
 |---|---|---|
-| ASR | **whisper.cpp `large-v3-turbo`** | Decisão confirmada no pepper (WER ~3.8% PT-BR, Metal). Mesma instalação. |
-| Áudio | **PCM 16kHz mono WAV** via AudioWorklet | Captura Float32 no browser → downsample para 16k → encode WAV. Mesmo formato do pipeline do pepper. |
-| Cliente | **Web app / PWA** (Vite + React 18 + TS) | Entra direto: sem store, sem build nativo. Mic permission via getUserMedia. Instalável na home do tablet/celular (manifest + SW mínimo). |
-| Server | Node 20+ (Fastify) + whisper-server (`POST /inference`) | Reusa o pipeline do pepper; acopla pouco. |
-| Monorepo | **pnpm workspaces + Turborepo**, TypeScript em tudo | Compartilhamento de tipos/protocolo app↔server via `packages/shared`; build paralelo/cached. |
-| Inject de texto (macOS) | **1º: clipboard + `Cmd+V` simulado** (CGEvent via helper nativo / AppleScript); restaura clipboard anterior | Paste é confiável em qualquer campo e rápido; digitação char-a-char é inconsistente entre apps. Requer permissão de Acessibilidade. |
-| Inject fallback | AppleScript `keystroke` tipo-a-tipo | Para campos que ignoram paste; lento, só quando paste falhar. |
-| Transporte | **HTTPS na LAN** (Tailscale Serve OU mkcert/self-signed) | `getUserMedia` exige secure context — HTTP puro em IP LAN é bloqueado pelo browser no celular. |
-| Modo salvar (v0.3) | SQLite (`better-sqlite3`), schema espelhado do pepper | Migração trivial. |
-| VAD (v1) | Não — botão stop manual | Silero entra como polimento (mesmo roadmap do pepper). |
-| OS alvo | macOS (listener + inject). Cliente: iOS Safari e Android Chrome | Inject de texto varia por OS — só macOS no piloto. |
+| ASR | **whisper.cpp `large-v3-turbo`** | Decision confirmed in pepper (WER ~3.8% PT-BR, Metal). Same installation. |
+| Audio | **PCM 16kHz mono WAV** via AudioWorklet | Float32 capture in the browser → downsample to 16k → WAV encode. Same format as pepper's pipeline. |
+| Client | **Web app / PWA** (Vite + React 18 + TS) | Direct entry: no store, no native build. Mic permission via getUserMedia. Installable on the tablet/phone home (manifest + minimal SW). |
+| Server | Node 20+ (Fastify) + whisper-server (`POST /inference`) | Reuses pepper's pipeline; couples little. |
+| Monorepo | **pnpm workspaces + Turborepo**, TypeScript everywhere | Types/protocol sharing app↔server via `packages/shared`; parallel/cached build. |
+| Text inject (macOS) | **1st: clipboard + simulated `Cmd+V`** (CGEvent via native helper / AppleScript); restores the previous clipboard | Paste is reliable in any field and fast; char-by-char typing is inconsistent across apps. Requires the Accessibility permission. |
+| Inject fallback | AppleScript `keystroke` type-as-you-type | For fields that ignore paste; slow, only when paste fails. |
+| Transport | **HTTPS on the LAN** (Tailscale Serve OR mkcert/self-signed) | `getUserMedia` requires a secure context — plain HTTP on a LAN IP is blocked by the browser on mobile. |
+| Save mode (v0.3) | SQLite (`better-sqlite3`), schema mirrored from pepper | Trivial migration. |
+| VAD (v1) | No — manual stop button | Silero comes in as polish (same roadmap as pepper). |
+| Target OS | macOS (listener + inject). Client: iOS Safari and Android Chrome | Text inject varies by OS — macOS only in the pilot. |
 
-## 4. Arquitetura
+## 4. Architecture
 
 ```
-┌─ PWA (smartphone/tablet) ────────┐        ┌─ Mac com whisper ──────────────────────────┐
+┌─ PWA (smartphone/tablet) ────────┐        ┌─ Mac with whisper ──────────────────────────┐
 │                                  │ HTTPS  │                                            │
-│  config endereço do host         │───────→│  lisa-listener :8080 (Fastify, HTTPS)      │
-│  mic → AudioWorklet              │  WAV   │   ├─ valida WAV, chama POST /inference     │
+│  host address config             │───────→│  lisa-listener :8080 (Fastify, HTTPS)      │
+│  mic → AudioWorklet              │  WAV   │   ├─ validates WAV, calls POST /inference  │
 │  downsample 48k→16k mono         │  body  │   ├─ whisper-server :8081 (large-v3-turbo) │
-│  encode WAV                      │        │   ├─ modo INJECT:                          │
-│  botão grave/stop                │←───────│   │    clipboard ← texto                   │
-│  modo: injetar/salvar/mostrar    │ {text} │   │    Cmd+V simulado no app em foco       │
-│  preview transcript + status     │        │   │    restaura clipboard (delay ~400ms)   │
-│                                  │        │   └─ modo SALVAR: INSERT transcriptions    │
+│  encode WAV                      │        │   ├─ INJECT mode:                          │
+│  record/stop button              │←───────│   │    clipboard ← text                    │
+│  mode: inject/save/display       │ {text} │   │    simulated Cmd+V in the focused app  │
+│  transcript preview + status     │        │   │    restores clipboard (~400ms delay)   │
+│                                  │        │   └─ SAVE mode: INSERT into transcriptions │
 └──────────────────────────────────┘        └────────────────────────────────────────────┘
 ```
 
-- A PWA conversa **só com o lisa-listener** (:8080). Listener orquestra o whisper-server (:8081).
-- Mesma topologia do pepper (app → API :8080 → whisper :8081) — valida num host só, sem cadastro.
+- The PWA talks **only to the lisa-listener** (:8080). The listener orchestrates the whisper-server (:8081).
+- Same topology as pepper (app → API :8080 → whisper :8081) — validated on a single host, with no sign-up.
 
 ## 5. Monorepo
 
@@ -69,11 +69,11 @@ Se o lisa virar módulo do pepper: o que migra é o server-side (listener + inje
 lisa/
 ├── pnpm-workspace.yaml
 ├── turbo.json
-├── package.json                 # scripts raiz: dev, build, lint, typecheck, test, e2e
+├── package.json                 # root scripts: dev, build, lint, typecheck, test, e2e
 ├── .env.example
-├── Makefile                     # setup one-shot (§11.1)
+├── Makefile                     # one-shot setup (§11.1)
 ├── apps/
-│   ├── listener/                # Fastify :8080 — API, orquestra whisper, inject, persistência
+│   ├── listener/                # Fastify :8080 — API, orchestrates whisper, inject, persistence
 │   │   └── src/
 │   │       ├── routes/dictate.ts, notes.ts, health.ts
 │   │       ├── whisper/client.ts
@@ -86,31 +86,31 @@ lisa/
 │           ├── audio/worklet.ts (downsample), wav.ts (encoder), recorder.ts
 │           ├── screens/Gravar.tsx
 │           ├── api/dictate.ts
-│           └── settings.ts      # endereço do host (localStorage)
+│           └── settings.ts      # host address (localStorage)
 ├── packages/
-│   ├── shared/                  # tipos do protocolo, schema zod, constantes (versionamento de API)
+│   ├── shared/                  # protocol types, zod schema, constants (API versioning)
 │   │   └── src/protocol.ts, types.ts, errors.ts
-│   ├── inject/                  # helper de inject puro (CLI + lib) — o pacote que migra p/ pepper
+│   ├── inject/                  # pure inject helper (CLI + lib) — the package that migrates to pepper
 │   │   └── src/clipboard.ts, paste.ts, detect-permissions.ts
-│   └── audio/                   # WAV encoder + downsample + validação (usado por web e listener)
+│   └── audio/                   # WAV encoder + downsample + validation (used by web and listener)
 │       └── src/wav.ts, validate.ts
 ├── scripts/
-│   ├── setup-whisper.sh         # baixa/compila whisper.cpp + modelo large-v3-turbo
-│   ├── run-whisper.sh           # sobe whisper-server na :8081 c/ Metal
-│   └── setup-https.sh           # mkcert OU Tailscale Serve
+│   ├── setup-whisper.sh         # downloads/builds whisper.cpp + large-v3-turbo model
+│   ├── run-whisper.sh           # starts the whisper-server on :8081 with Metal
+│   └── setup-https.sh           # mkcert OR Tailscale Serve
 └── tests/
     ├── listener/ (vitest)
     ├── packages/ (vitest)
-    └── e2e/ (Playwright — contra a PWA em desktop; mic simulado)
+    └── e2e/ (Playwright — against the PWA on desktop; simulated mic)
 ```
 
-Regras:
+Rules:
 
-- `apps/*` dependem de `packages/*`, nunca o inverso.
-- Contrato app↔server vive **só** em `packages/shared` (`protocol.ts`) — nenhum tipo duplicado.
-- `packages/inject` não conhece Express/Fastify — lib pura + CLI (`lisa-inject "texto"`), para poder sair como módulo do pepper.
+- `apps/*` depend on `packages/*`, never the other way around.
+- The app↔server contract lives **only** in `packages/shared` (`protocol.ts`) — no duplicated types.
+- `packages/inject` knows nothing about Express/Fastify — pure lib + CLI (`lisa-inject "text"`), so it can ship as a pepper module.
 
-## 6. Protocolo (packages/shared)
+## 6. Protocol (packages/shared)
 
 ```ts
 // POST /api/dictate — multipart: { audio: WAV file } + X-Lisa-Mode: inject | save | display
@@ -120,160 +120,160 @@ type DictateResponse =
   | { ok: false; error: LisaError }
 ```
 
-- Sem auth. `Z-Lisa-Client` header p/ telemetria simples (`web/1.0`).
-- Erros tipados no `packages/shared/errors.ts`: `WAV_INVALID`, `WHISPER_DOWN`, `INJECT_NO_PERMISSION`, `INJECT_FAILED`, `DB_ERROR`.
-- Versionamento: campo `protocol` no `/api/health` (int) — se divergir do client com esperado (constante no shared), a PWA mostra banner "atualize o listener".
+- No auth. `Z-Lisa-Client` header for simple telemetry (`web/1.0`).
+- Typed errors in `packages/shared/errors.ts`: `WAV_INVALID`, `WHISPER_DOWN`, `INJECT_NO_PERMISSION`, `INJECT_FAILED`, `DB_ERROR`.
+- Versioning: `protocol` field in `/api/health` (int) — if it diverges from what the client expects (constant in shared), the PWA shows an "update the listener" banner.
 
 ## 7. PWA
 
 ### 7.1. Stack
 
 - Vite + React 18 + TypeScript
-- Áudio: `getUserMedia` + **AudioWorklet** (no ScriptProcessor — deprecated) → Float32 → downsample → WAV do `packages/audio`
-- HTTP: `fetch` com upload binário do WAV (Content-Type `audio/wav`)
-- PWA: `manifest.webmanifest` (ícones, standalone, orientação livre) + service worker mínimo (app shell cache — a gravação não funciona offline de qualquer forma)
-- Settings persistidos em `localStorage` (endereço do host, modo default)
+- Audio: `getUserMedia` + **AudioWorklet** (not ScriptProcessor — deprecated) → Float32 → downsample → WAV from `packages/audio`
+- HTTP: `fetch` with binary WAV upload (Content-Type `audio/wav`)
+- PWA: `manifest.webmanifest` (icons, standalone, free orientation) + minimal service worker (app shell cache — recording doesn't work offline anyway)
+- Settings persisted in `localStorage` (host address, default mode)
 
-### 7.2. Telas
+### 7.2. Screens
 
-1. **Gravar** (única tela):
-   - botão grande mic (grave/stop), indicador de gravação (pulso + timer)
-   - toggle do modo: **Injetar** / **Salvar** / **Só mostrar**
-   - preview do transcript + status do round-trip (`gravando → enviando → transcrevendo → entregue/erro`)
-   - last-request log (latência, tamanho WAV) — telemetria do piloto
-2. **Settings** (sheet/rota): endereço do host, teste de conectividade (`/api/health`), modo default
-3. Sem login, sem lista, sem cadastro.
+1. **Record** (single screen):
+   - big mic button (record/stop), recording indicator (pulse + timer)
+   - mode toggle: **Inject** / **Save** / **Display only**
+   - transcript preview + round-trip status (`recording → uploading → transcribing → delivered/error`)
+   - last-request log (latency, WAV size) — pilot telemetry
+2. **Settings** (sheet/route): host address, connectivity test (`/api/health`), default mode
+3. No login, no list, no sign-up.
 
-### 7.3. Fluxo (modo Injetar)
+### 7.3. Flow (Inject mode)
 
 ```
-[botão mic] → getUserMedia + AudioWorklet → buffer Float32
+[mic button] → getUserMedia + AudioWorklet → Float32 buffer
 [stop] → encode WAV 16k mono → POST /api/dictate (X-Lisa-Mode: inject)
 listener → whisper-server → {text}
-  inject → clipboard ← texto; Cmd+V no app em foco; restaura clipboard
-PWA recebe {injected: true} → feedback "texto entregue" + latência
+  inject → clipboard ← text; Cmd+V in the focused app; restores clipboard
+PWA receives {injected: true} → "text delivered" feedback + latency
 ```
 
-### 7.4. Secure context (pré-requisito de uso)
+### 7.4. Secure context (usage prerequisite)
 
-`getUserMedia` exige HTTPS. Opções (setup automatizado no `script setup-https.sh`):
+`getUserMedia` requires HTTPS. Options (automated setup in `scripts/setup-https.sh`):
 
-1. **Tailscale Serve** (preferido se Tailscale já instalado): `tailscale serve https / https://localhost:8080` — cert válido automaticamente, acessível via hostname do tailnet.
-2. **mkcert** + `--https` do Node/Fastify: instalar CA local no dispositivo. Para tablets/celulares: exportar `rootCA.pem`, instalar como perfil/confiança no iOS/Android.
+1. **Tailscale Serve** (preferred if Tailscale is already installed): `tailscale serve https / https://localhost:8080` — valid cert automatically, accessible via the tailnet hostname.
+2. **mkcert** + Node/Fastify `--https`: install the local CA on the device. For tablets/phones: export `rootCA.pem`, install as a profile/trust on iOS/Android.
 
-A PWA bloqueia gravação em HTTP puro — tela mostra instrução de setup quando `!window.isSecureContext && origin não é localhost`.
+The PWA blocks recording over plain HTTP — the screen shows setup instructions when `!window.isSecureContext && origin is not localhost`.
 
-## 8. Inject de texto (macOS)
+## 8. Text inject (macOS)
 
-- Helper isolado em `packages/inject`. Sequência do modo inject:
-  1. captura + guarda clipboard atual (com timestamp)
-  2. escreve transcript no clipboard (`pbcopy` via spawn ou wrapper NSPasteboard)
-  3. envia `Cmd+V` — ordem de preferência: helper nativo Swift compilado no setup (`CGEventPost`) → AppleScript `System Events keystroke 'v' using command down`
-  4. delay 300–500ms → restaura clipboard anterior (se não houve cópia nova do usuário nesse intervalo)
-- Permissões: **Acessibilidade** p/ o processo do listener (System Settings → Privacy → Accessibility). `/api/health` roda check real (inject + undo de caractere em campo testável) e reporta `inject: ok | no_permission | failed`.
-- Edge cases medidos no piloto (matriz em `docs/inject-matrix.md`): apps que bloqueiam paste (alguns Electron com campo custom), race de cópia durante inject, apps sandboxed. Fallback `keystroke` tipo-a-tipo configurável por flag no request (`x-lisa-inject-strategy: paste | type`).
-- Validação em: Safari, Obsidian, VS Code, Notes, Slack.
+- Isolated helper in `packages/inject`. Sequence of the inject mode:
+  1. capture + save the current clipboard (with timestamp)
+  2. write the transcript to the clipboard (`pbcopy` via spawn or NSPasteboard wrapper)
+  3. send `Cmd+V` — order of preference: native Swift helper compiled at setup (`CGEventPost`) → AppleScript `System Events keystroke 'v' using command down`
+  4. delay 300–500ms → restore the previous clipboard (if the user hasn't made a new copy in that interval)
+- Permissions: **Accessibility** for the listener process (System Settings → Privacy → Accessibility). `/api/health` runs a real check (inject + undo of a character in a testable field) and reports `inject: ok | no_permission | failed`.
+- Edge cases measured in the pilot (matrix in `docs/inject-matrix.md`): apps that block paste (some Electron apps with custom fields), copy race during inject, sandboxed apps. `keystroke` type-as-you-type fallback configurable per flag in the request (`x-lisa-inject-strategy: paste | type`).
+- Validation in: Safari, Obsidian, VS Code, Notes, Slack.
 
-## 9. Modelo de dados (só no modo salvar, v0.3)
+## 9. Data model (save mode only, v0.3)
 
 ```sql
 transcriptions (
   id         TEXT PK,                  -- UUID
-  title      TEXT NOT NULL,            -- deriva da primeira frase
+  title      TEXT NOT NULL,            -- derived from the first sentence
   text       TEXT NOT NULL,
-  audio_size INTEGER NOT NULL,          -- bytes do WAV, p/ debug de latência
-  source     TEXT DEFAULT 'dictation', -- distingue de registro futuro do pepper
+  audio_size INTEGER NOT NULL,          -- WAV bytes, for latency debugging
+  source     TEXT DEFAULT 'dictation', -- distinguishes from a future pepper record
   created_at TEXT NOT NULL DEFAULT now()
 )
 ```
 
-DB: SQLite em `~/Library/Application Support/lisa/lisa.db` (não no repo). Campos espelhados do pepper, menos `user_id` — copy + preencher `user_id` na migração.
+DB: SQLite at `~/Library/Application Support/lisa/lisa.db` (not in the repo). Fields mirrored from pepper, minus `user_id` — migration: copy + fill `user_id`.
 
-## 10. Segurança
+## 10. Security
 
-- HTTPS na LAN via Tailscale Serve ou cert local (§7.4) — exige secure context, não só por permissão de mic: também criptografa o áudio.
-- Sem auth — premissa de confiança da rede local, igual ao cadastro do pepper (§6 dele). Se sair da LAN por Tailscale, o tailnet funciona como camada de controle de acesso.
-- Permissão de Acessibilidade ao listener = menor privilégio; listener é dev-tool rodando no usuário, não daemon de sistema.
-- `packages/inject` nunca manda keystrokes digitados por terceiros — só o transcript, e restaura clipboard.
-- Sanitização: transcript vai para o clipboard (sem execução por shell) — nenhum dado do áudio passa por processo externo além do whisper local.
+- HTTPS on the LAN via Tailscale Serve or a local cert (§7.4) — required for secure context, not just for the mic permission: it also encrypts the audio.
+- No auth — trusted local network premise, like pepper's sign-up-free model (§6 of it). If it leaves the LAN via Tailscale, the tailnet acts as an access control layer.
+- Accessibility permission for the listener = least privilege; the listener is a dev tool running for the user, not a system daemon.
+- `packages/inject` never sends third-party keystrokes — only the transcript, and it restores the clipboard.
+- Sanitization: the transcript goes to the clipboard (no shell execution) — no audio data passes through any external process other than the local whisper.
 
-## 11. Checklist "pronto para uso"
+## 11. "Ready to use" checklist
 
-Critério: nova máquina + tablet configurado do zero em < 30 min, sem passos manuais não-documentados.
+Criterion: a new machine + tablet configured from zero in < 30 min, with no undocumented manual steps.
 
-### 11.1. Setup e DX
-- [ ] `make setup` — raiz: instala pnpm deps, compila helper Swift de inject, roda `scripts/setup-whisper.sh` (whisper.cpp + modelo large-v3-turbo com Metal), roda `scripts/setup-https.sh`
-- [ ] `.env.example` completo + `config.ts` com zod (listener: porta, caminho whisper db/modelo, modo inject default, secret de nada — nada de secret)
+### 11.1. Setup and DX
+- [ ] `make setup` — root: installs pnpm deps, compiles the Swift inject helper, runs `scripts/setup-whisper.sh` (whisper.cpp + large-v3-turbo model with Metal), runs `scripts/setup-https.sh`
+- [ ] Complete `.env.example` + `config.ts` with zod (listener: port, whisper db/model path, default inject mode, secret of nothing — no secrets)
 - [ ] `make dev` (turbo: web + listener + whisper-server), `make build`, `make lint`, `make typecheck`, `make test`
-- [ ] README por app + raiz, doc `docs/setup.md` passo-a-passo com prints das permissões (Acessibilidade, mic no iOS/Android)
+- [ ] README per app + root, `docs/setup.md` step-by-step doc with screenshots of the permissions (Accessibility, mic on iOS/Android)
 
-### 11.2. Operação
-- [ ] `/api/health` completo: whisper disponível (ping no :8081), permissão de inject (check real), DB, caminho do modelo versão, `protocol` version
-- [ ] Estados de erro tratados com mensagem legível no app: whisper down, WAV inválido, inject sem permissão, host inacessível (timeout)
-- [ ] Logs estruturados (pino): cada dictate → latência total + latência whisper + latência inject, tamanho de WAV, modo, sucesso/falha
-- [ ] Listener reinicia whisper-server se ping falhar (supervisão leve, `spawn` com backoff)
+### 11.2. Operation
+- [ ] Complete `/api/health`: whisper available (ping on :8081), inject permission (real check), DB, model path version, `protocol` version
+- [ ] Error states handled with readable messages in the app: whisper down, invalid WAV, inject without permission, unreachable host (timeout)
+- [ ] Structured logs (pino): each dictate → total latency + whisper latency + inject latency, WAV size, mode, success/failure
+- [ ] Listener restarts the whisper-server if the ping fails (light supervision, `spawn` with backoff)
 
-### 11.3. Cliente
-- [ ] PWA instalável (manifest + ícones + SW) — testada adicionar na home em iOS e Android
-- [ ] Instrução inline na tela quando secure context ausente (§7.4)
-- [ ] Reconexão: se host offline, botão re-testa `/api/health`; gravação aborta com mensagem em vez de acumular buffer
-- [ ] Acessibilidade: botão mic em área mínima de toque 48px, funciona com orientação landscape
+### 11.3. Client
+- [ ] Installable PWA (manifest + icons + SW) — tested "add to home" on iOS and Android
+- [ ] Inline instruction on the screen when the secure context is missing (§7.4)
+- [ ] Reconnection: if the host is offline, a button re-tests `/api/health`; recording aborts with a message instead of accumulating buffers
+- [ ] Accessibility: mic button with minimum 48px touch area, works in landscape orientation
 
-### 11.4. Validação do piloto
-- [ ] Benchmark de latência documentado: grave→texto na tela para frases de 3s/10s/20s (alvo: < 2s no stop, ~15s de frase)
-- [ ] Matriz de inject (§8) completa nos 5 apps — com resultados registrados
-- [ ] Restauração de clipboard funciona sob cópia concorrente do usuário
-- [ ] Testes: unit (packages/audio encode WAV golden files, packages/inject com macOS mocked), e2e Playwright (fluxo display mode com fake whisper-server), smoke script `make smoke` (end-to-end real com WAV fixture via `curl`)
+### 11.4. Pilot validation
+- [ ] Documented latency benchmark: speech→text on screen for sentences of 3s/10s/20s (target: < 2s on stop, ~15s sentence)
+- [ ] Inject matrix (§8) complete across the 5 apps — with recorded results
+- [ ] Clipboard restoration works under concurrent user copy
+- [ ] Tests: unit (packages/audio WAV encode golden files, packages/inject with mocked macOS), e2e Playwright (display mode flow with fake whisper-server), smoke script `make smoke` (real end-to-end with a WAV fixture via `curl`)
 
-### 11.5. Repositório
-- [ ] git init + CI leve (GitHub Actions: typecheck + lint + test no PR)
-- [ ] `.gitignore` (modelos, db, certs, recordings temporários)
-- [ ] Licença + badge de status no README
+### 11.5. Repository
+- [ ] git init + light CI (GitHub Actions: typecheck + lint + test on PR)
+- [ ] `.gitignore` (models, db, certs, temporary recordings)
+- [ ] License + status badge on the README
 
 ## 12. Roadmap
 
-### v0.1 — Loop básico (MVP)
+### v0.1 — Basic loop (MVP)
 - [ ] Monorepo scaffold (pnpm + turbo + `packages/shared` + `packages/audio`)
-- [ ] whisper-server rodando com `large-v3-turbo` (Metal) — script setup
+- [ ] whisper-server running with `large-v3-turbo` (Metal) — setup script
 - [ ] lisa-listener: `/api/dictate` + `/api/health` → whisper → `{text}`
-- [ ] PWA: AudioWorklet → WAV 16k mono, upload, exibir transcript
-- [ ] HTTPS por Tailscale Serve ou mkcert (§7.4)
-- [ ] Logging de latência + `make smoke`
+- [ ] PWA: AudioWorklet → WAV 16k mono, upload, display transcript
+- [ ] HTTPS via Tailscale Serve or mkcert (§7.4)
+- [ ] Latency logging + `make smoke`
 
-### v0.2 — Inject no desktop
-- [ ] `packages/inject`: clipboard + paste + restauração + permissão de Acessibilidade
-- [ ] Modo Injetar na PWA + matrizes de erro do protocolo
-- [ ] Validação Safari/Obsidian/VS Code/Notes/Slack — `docs/inject-matrix.md`
-- [ ] e2e Playwright do modo display
+### v0.2 — Inject on desktop
+- [ ] `packages/inject`: clipboard + paste + restoration + Accessibility permission
+- [ ] Inject mode in the PWA + protocol error matrices
+- [ ] Validation Safari/Obsidian/VS Code/Notes/Slack — `docs/inject-matrix.md`
+- [ ] e2e Playwright of display mode
 
-### v0.3 — Modo salvar
-- [ ] SQLite + schema espelhado do pepper (§9)
-- [ ] Rotas `/api/notes` (GET lista, DELETE)
-- [ ] Toggle modo Salvar + feedback no app
+### v0.3 — Save mode
+- [ ] SQLite + schema mirrored from pepper (§9)
+- [ ] `/api/notes` routes (GET list, DELETE)
+- [ ] Save mode toggle + in-app feedback
 
-### v0.4 — Polimento (opcional, alimenta pepper)
-- [ ] VAD (Silero) no browser — para o roadmap v1.x do pepper
-- [ ] Fallback `keystroke` tipo-a-tipo testado
-- [ ] Relatório do piloto: o que migrou/decidiu para o pepper + extração de `packages/inject` como módulo standalone
+### v0.4 — Polish (optional, feeds pepper)
+- [ ] VAD (Silero) in the browser — goes into pepper's v1.x roadmap
+- [ ] `keystroke` type-as-you-type fallback tested
+- [ ] Pilot report: what migrated/decided for pepper + extraction of `packages/inject` as a standalone module
 
-## 13. Decisões e perguntas abertas
+## 13. Decisions and open questions
 
-**Decidido:**
+**Decided:**
 
-- [x] Codebases separadas do pepper (2026-11-24) — se integrar, `packages/inject` + listener migram como módulo/pacote server-side. Monorepo **interno do lisa** p/ compartilhar tipos/protocolo entre app e server.
-- [x] Entrada de áudio = **web/PWA** (2026-11-24, substitui o app RN original) — AudioWorklet + WAV; RN só volta se o pepper a decisão do pepper exigir.
-- [x] macOS primeiro (listener + inject); cliente: iOS Safari e Android Chrome.
+- [x] Separate codebases from pepper (2026-11-24) — if integrated, `packages/inject` + listener migrate as a server-side module/package. Monorepo **internal to lisa** to share types/protocol between app and server.
+- [x] Audio input = **web/PWA** (2026-11-24, replaces the original RN app) — AudioWorklet + WAV; RN only comes back if pepper decisions require it.
+- [x] macOS first (listener + inject); client: iOS Safari and Android Chrome.
 
-**Abertas:**
+**Open:**
 
-- [ ] Transporte HTTPS: Tailscale Serve vs mkcert+CA no dispositivo — decidir ao rodar `setup-https.sh` na máquina real.
-- [ ] Inject no Windows/Linux: entra no piloto ou só no pepper v2? (default: só macOS)
+- [ ] HTTPS transport: Tailscale Serve vs mkcert+CA on the device — decide when running `setup-https.sh` on the real machine.
+- [ ] Inject on Windows/Linux: enters the pilot or only pepper v2? (default: macOS only)
 
-## 14. Referências
+## 14. References
 
-- [Whispering (estilo de referência)](https://github.com/braden-w/whispering) — dictation app open-source, modelo de UX do inject
-- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) — ASR local, server mode
-- [CGEvent / Event Taps](https://developer.apple.com/documentation/coregraphics/cgevent) — simulação de teclado no macOS
-- [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) — captura de áudio no browser
-- [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) — HTTPS válido na LAN/tailnet
-- pepper.ai — `../pepper-ai/SPEC.md` (decisões herdadas, schema, stack)
+- [Whispering (reference style)](https://github.com/braden-w/whispering) — open-source dictation app, model for the inject UX
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) — local ASR, server mode
+- [CGEvent / Event Taps](https://developer.apple.com/documentation/coregraphics/cgevent) — keyboard simulation on macOS
+- [AudioWorklet](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorklet) — audio capture in the browser
+- [Tailscale Serve](https://tailscale.com/kb/1242/tailscale-serve) — valid HTTPS on the LAN/tailnet
+- pepper.ai — `../pepper-ai/SPEC.md` (inherited decisions, schema, stack)
