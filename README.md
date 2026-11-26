@@ -1,5 +1,8 @@
 # lisa
 
+[![CI](https://github.com/tamires-manhaes/lisa/actions/workflows/ci.yml/badge.svg)](https://github.com/tamires-manhaes/lisa/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 > Dictation pilot: speak on the phone/tablet → text appears (or is saved) on the computer, in any focused field, in the style of [Whispering/WhisperFlow](https://github.com/braden-w/whispering).
 
 ## What it is

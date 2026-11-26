@@ -19,3 +19,9 @@ certs/
 # ephemeral data (recordings, db)
 recordings/
 *.db
+
+# whisper.cpp build + model weights
+whisper.cpp/
+*.ggml
+*.bin
+*.p12
