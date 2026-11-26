@@ -3,7 +3,8 @@ import { LISA_PROTOCOL_VERSION, type LisaMode } from '@lisa/shared'
 
 /**
  * lisa-listener :8080 (SPEC §4). Boot-only skeleton — whisper orchestration,
- * inject, persistence and config (zod) come in later slices.
+ * inject and persistence come in later slices. Env config (zod) lives in
+ * `config.ts` and is loaded by `index.ts` before boot.
  */
 export function createApp() {
   const app = Fastify({
