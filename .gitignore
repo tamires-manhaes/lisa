@@ -9,6 +9,7 @@ coverage/
 # env
 *.env
 .env*
+!.env.example
 
 # whisper models / certs (SPEC §11.5)
 modelos/
