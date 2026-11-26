@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+.turbo/
+coverage/
+
+# env
+*.env
+.env*
+
+# whisper models / certs (SPEC §11.5)
+modelos/
+certs/
+*.pem
+*.key
+
+# ephemeral data (recordings, db)
+recordings/
+*.db
