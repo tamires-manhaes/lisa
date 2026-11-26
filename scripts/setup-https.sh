@@ -56,10 +56,17 @@ tailscale_mode() {
 
   # Serve the local HTTP listener as HTTPS on the tailnet (automatic cert).
   # Needs the control plane to vouch HTTPS certs for this node — some custom
-  # forks return 501 (Not implemented) for the feature; in that case fall back
-  # to mkcert (--mkcert).
+  # forks return 501 (Not implemented) for the feature.
   local serve_err
   if ! serve_err="$(tailscale serve --bg "${PORT}" 2>&1)"; then
+    # Autodetected path: fall back to mkcert instead of aborting the whole
+    # `make setup` (issue #21/#22). An explicit --tailscale invocation still
+    # dies loudly below (no fallback allowed).
+    if [[ "${TS_FALLBACK:-0}" -eq 1 ]]; then
+      warn "tailscale serve failed — falling back to mkcert. Set --tailscale to make this fatal. Error: ${serve_err}"
+      mkcert_mode
+      return
+    fi
     die "tailscale serve failed: ${serve_err}
   (Control plane may not implement HTTPS cert issuance for this node — custom/self-hosted forks sometimes do not. Fall back: $0 --mkcert)"
   fi
@@ -185,6 +192,9 @@ if [[ -z "${MODE}" ]]; then
   if tailscale_running; then
     log "Autodetect: tailscale installed and connected → tailscale serve path (SPEC §7.4 preferred)."
     MODE="tailscale"
+    # Autodetect only: if the control plane cannot issue HTTPS certs, fall
+    # back to mkcert instead of failing the whole setup run (issues #21/#22).
+    TS_FALLBACK=1
   elif command -v tailscale >/dev/null 2>&1; then
     die "tailscale installed but not connected (run 'tailscale up'), and mkcert mode was not forced. Use --mkcert to fall back."
   else
