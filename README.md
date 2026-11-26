@@ -18,6 +18,23 @@
 
 No auth: runs on the local/trusted network. Nothing leaves the LAN. Pilot criteria: machine from zero running in < 30 min, speech→text latency < 2s.
 
+## Quickstart
+
+Prereqs: Node ≥ 20, pnpm ≥ 10, Xcode Command Line Tools + Homebrew (full list and permission steps: [`docs/setup.md`](docs/setup.md)).
+
+1. `make setup` — deps + whisper.cpp (Metal) + `large-v3-turbo` model + HTTPS (Tailscale Serve or mkcert)
+2. `cp .env.example .env` — set `WHISPER_MODEL_PATH` to the path printed by setup
+3. `scripts/run-whisper.sh` — whisper-server on `127.0.0.1:8081` (leave it running)
+4. `make dev` — listener `:8080` + web; open the printed URL on the phone/tablet (`https://<host>` — secure context is required for the mic)
+5. Record → transcript appears. Inject/Save modes and permissions: [`docs/setup.md`](docs/setup.md)
+
+Topology (details in [`SPEC.md §4`](SPEC.md)):
+
+```
+PWA (mic → WAV 16k mono) ─HTTPS→ lisa-listener :8080 → whisper-server :8081 (Metal)
+                                        └→ inject (clipboard + Cmd+V) | save (SQLite) | display
+```
+
 ## v0 goal
 
 Prove the loop. The milestones tell the story:
